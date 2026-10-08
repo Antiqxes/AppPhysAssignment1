@@ -16,6 +16,10 @@ namespace {
 		float radius; // Radius of the ball
 	};
 
+	struct Vector2 {
+		float x, y;
+	};;
+
 	constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
 uniform vec2 uCenter;
@@ -137,8 +141,14 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		}
 	}
 
+	bool checkBallCollision(const Ball& a, const Ball& b) {
+		float dx = b.x - a.x;
+		float dy = b.y - a.y;
+		float distance = sqrt(dx * dx + dy * dy);
+		return distance < (a.radius + b.radius);
+	}
 
-}
+} // namespace
 
 int main(void)
 {
@@ -185,6 +195,16 @@ int main(void)
 			updateBall(ball, deltaTime);
 			resolveWallCollision(ball);
 		}
+
+		for (size_t i = 0; i < balls.size(); ++i) {
+			for (size_t j = i + 1; j < balls.size(); ++j) {
+				if (checkBallCollision(balls[i], balls[j])) {
+					std::cout << "balls " << i << " and " << i << "collided" << std::endl;
+				}
+			}
+		}
+		/* Render here */
+
 		glClear(GL_COLOR_BUFFER_BIT);
 		for (const Ball& ball : balls) {
 			drawBall(shaderProgram, mesh, ball);
