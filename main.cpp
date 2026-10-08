@@ -9,7 +9,7 @@ int main(void)
         return -1;
 
     /* Create a windowed mode window and its OpenGL context */
-    GLFWwindow* window = glfwCreateWindow(640, 480, "BartulinAppPhysAssignment1", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(600, 600, "BartulinAppPhysAssignment1", NULL, NULL);
 	// check if the window was created successfully
     if (!window) {
         std::cout << "Failed to create GLFW window" << std::endl;
