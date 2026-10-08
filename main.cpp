@@ -163,7 +163,10 @@ int main(void)
 
 	GLuint shaderProgram = createShaderProgram(kVertexShaderSource, kFragmentShaderSource);
 	CircleMesh mesh = createCircleMesh(ballRadius, ballSegments);
-	Ball ball = { 0.0f, 0.0f, 0.6f, 0.4f, ballRadius }; // Initial position and velocity of the ball
+	std::vector<Ball> balls = {
+			{-0.5f, 0.3f, 0.6f, 0.4f, ballRadius},
+			{0.4f, 0.2f, -0.5f, 0.3f, ballRadius},
+	};
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
@@ -175,15 +178,17 @@ int main(void)
 		float currentFrameTime = static_cast<float>(glfwGetTime());
 		float deltaTime = currentFrameTime - lastFrameTime;
 		lastFrameTime = currentFrameTime;
-        glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
-        /* Render here */
-		
-        glClear(GL_COLOR_BUFFER_BIT);
+		glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
-		updateBall(ball, deltaTime);
-		resolveWallCollision(ball);
-		drawBall(shaderProgram, mesh, ball);
+		for (Ball& ball : balls) {
+			updateBall(ball, deltaTime);
+			resolveWallCollision(ball);
+		}
+		glClear(GL_COLOR_BUFFER_BIT);
+		for (const Ball& ball : balls) {
+			drawBall(shaderProgram, mesh, ball);
+		}
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
