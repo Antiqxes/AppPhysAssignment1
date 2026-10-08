@@ -175,6 +175,8 @@ int main(void)
 	CircleMesh mesh = createCircleMesh(ballRadius, ballSegments);
 	std::vector<Ball> balls = {
 			{-0.5f, 0.3f, 0.6f, 0.4f, ballRadius},
+			{0.2f, -0.4f, -0.5f, 0.7f, ballRadius},
+			{-0.3f, -0.2f, 0.3f, -0.6f, ballRadius},
 			{0.4f, 0.2f, -0.5f, 0.3f, ballRadius},
 	};
 
