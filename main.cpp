@@ -10,19 +10,19 @@ namespace {
 	constexpr int ballSegments = 40; // Number of segments to approximate the ball
 	constexpr float pi = 3.14159265358979323846f; // Value of pi
 
-    struct Ball {
+	struct Ball {
 		float x, y; // Position of the ball
 		float vx, vy; // Velocity of the ball
 		float radius; // Radius of the ball
-    };
+	};
 
-    constexpr const char* kVertexShaderSource = R"(#version 330 core
+	constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
 uniform vec2 uCenter;
 void main() { gl_Position = vec4(aPos + uCenter, 0.0, 1.0); }
 )";
 
-    constexpr const char* kFragmentShaderSource = R"(#version 330 core
+	constexpr const char* kFragmentShaderSource = R"(#version 330 core
 out vec4 FragColor;
 void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 )";
@@ -43,7 +43,7 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		return shader;
 	}
 
-    GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
+	GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource) {
 		GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexSource);
 		GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentSource);
 
@@ -63,7 +63,7 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 			throw std::runtime_error("Shader program linking failed");
 		}
 		return shaderProgram;
-    }
+	}
 
 	std::vector<float> generateCircleVertices(float radius, int segments) {
 		std::vector<float> vertices;
@@ -118,6 +118,26 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		ball.y += ball.vy * deltaTime;
 	}
 
+	void resolveWallCollision(Ball& ball) {
+		if (ball.x - ball.radius < -1.0f) {
+			ball.x = -1.0f + ball.radius;
+			ball.vx = -ball.vx;
+		}
+		if (ball.x + ball.radius > 1.0f) {
+			ball.x = 1.0f - ball.radius;
+			ball.vx = -ball.vx;
+		}
+		if (ball.y - ball.radius < -1.0f) {
+			ball.y = -1.0f + ball.radius;
+			ball.vy = -ball.vy;
+		}
+		if (ball.y + ball.radius > 1.0f) {
+			ball.y = 1.0f - ball.radius;
+			ball.vy = -ball.vy;
+		}
+	}
+
+
 }
 
 int main(void)
@@ -162,6 +182,7 @@ int main(void)
         glClear(GL_COLOR_BUFFER_BIT);
 
 		updateBall(ball, deltaTime);
+		resolveWallCollision(ball);
 		drawBall(shaderProgram, mesh, ball);
 
         /* Swap front and back buffers */
