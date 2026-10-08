@@ -113,6 +113,11 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		glBindVertexArray(0);
 	}
 
+	void updateBall(Ball& ball, float deltaTime) {
+		ball.x += ball.vx * deltaTime;
+		ball.y += ball.vy * deltaTime;
+	}
+
 }
 
 int main(void)
@@ -138,17 +143,25 @@ int main(void)
 
 	GLuint shaderProgram = createShaderProgram(kVertexShaderSource, kFragmentShaderSource);
 	CircleMesh mesh = createCircleMesh(ballRadius, ballSegments);
-	Ball ball = { 0.0f, 0.0f, 0.0f, 0.0f, ballRadius }; // Initial position and velocity of the ball
+	Ball ball = { 0.0f, 0.0f, 0.6f, 0.4f, ballRadius }; // Initial position and velocity of the ball
+
+	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
+
+	float lastFrameTime = static_cast<float>(glfwGetTime());
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+		float currentFrameTime = static_cast<float>(glfwGetTime());
+		float deltaTime = currentFrameTime - lastFrameTime;
+		lastFrameTime = currentFrameTime;
         glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
         /* Render here */
-		glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
+		
         glClear(GL_COLOR_BUFFER_BIT);
 
+		updateBall(ball, deltaTime);
 		drawBall(shaderProgram, mesh, ball);
 
         /* Swap front and back buffers */
