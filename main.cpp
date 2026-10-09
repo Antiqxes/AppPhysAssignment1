@@ -9,6 +9,7 @@ namespace {
 	constexpr float ballRadius = 0.1f; // Radius of the ball
 	constexpr int ballSegments = 40; // Number of segments to approximate the ball
 	constexpr float pi = 3.14159265358979323846f; // Value of pi
+	constexpr float gravity = -1.8f; // Gravity acceleration
 
 	struct Ball {
 		float x, y; // Position of the ball
@@ -113,6 +114,10 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		glBindVertexArray(0);
 	}
 
+	void applyGravity(Ball& ball, float deltaTime) {
+		ball.vy += gravity * deltaTime;
+	}
+
 	void updateBall(Ball& ball, float deltaTime) {
 		ball.x += ball.vx * deltaTime;
 		ball.y += ball.vy * deltaTime;
@@ -182,6 +187,7 @@ int main(void)
 		glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
 		for (Ball& ball : balls) {
+			applyGravity(ball, deltaTime);
 			updateBall(ball, deltaTime);
 			resolveWallCollision(ball);
 		}
