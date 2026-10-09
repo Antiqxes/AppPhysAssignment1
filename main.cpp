@@ -6,22 +6,24 @@
 #include<vector>
 
 namespace {
-	constexpr float ballRadius = 0.1f; // Radius of the ball
+
 	constexpr int ballSegments = 40; // Number of segments to approximate the ball
 	constexpr float pi = 3.14159265358979323846f; // Value of pi
 	constexpr float gravity = -1.8f; // Gravity acceleration
+	constexpr float stiffness = 400.0f; // Stiffness for collision response
+	constexpr float pointRadius = 0.03f; // Radius of the point mass
+	constexpr float restitution = 0.4f; // Coefficient of restitution
 
-	struct Ball {
-		float x, y; // Position of the ball
-		float vx, vy; // Velocity of the ball
-		float radius; // Radius of the ball
-		float restitution;
+	struct PointMass {
+		float x, y; // Position of the point mass
+		float vx, vy; // Velocity of the point mass
+		float mass; // Mass of the point mass
 	};
 
 	constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
-uniform vec2 uCenter;
-void main() { gl_Position = vec4(aPos + uCenter, 0.0, 1.0); }
+
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
 )";
 
 	constexpr const char* kFragmentShaderSource = R"(#version 330 core
@@ -81,65 +83,54 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		return vertices;
 	}
 
-	struct CircleMesh {
+	GLuint createDynamicVao(GLuint& vbo){
 		GLuint vao = 0;
-		GLuint vbo = 0;
-		GLsizei vertexCount = 0;
-	};
 
-	CircleMesh createCircleMesh(float radius, int segments) {
-		CircleMesh mesh;
-		std::vector<float> vertices = generateCircleVertices(radius, segments);
-		mesh.vertexCount = static_cast<GLsizei>(vertices.size() / 2);
+		glGenVertexArrays(1, &vao);
+		glGenBuffers(1, &vbo);
+		glBindVertexArray(vao);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-		glGenVertexArrays(1, &mesh.vao);
-		glGenBuffers(1, &mesh.vbo);
-
-		glBindVertexArray(mesh.vao);
-		glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
-		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), nullptr);
 		glEnableVertexAttribArray(0);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
-		return mesh;
+		return vao;
 	}
 
-	void drawBall(GLuint shaderProgram, const CircleMesh& mesh, const Ball& ball) {
-		glUseProgram(shaderProgram);
-		glUniform2f(glGetUniformLocation(shaderProgram, "uCenter"), ball.x, ball.y);
-		glBindVertexArray(mesh.vao);
-		glDrawArrays(GL_TRIANGLE_FAN, 0, mesh.vertexCount);
-		glBindVertexArray(0);
+	void uploadDynamic(GLuint vbo, const std::vector<float>& data) {
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_DYNAMIC_DRAW);
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
-	void applyGravity(Ball& ball, float deltaTime) {
-		ball.vy += gravity * deltaTime;
+	void applyGravity(PointMass& point, float deltaTime) {
+		point.vy += gravity * deltaTime;
 	}
 
-	void updateBall(Ball& ball, float deltaTime) {
-		ball.x += ball.vx * deltaTime;
-		ball.y += ball.vy * deltaTime;
+	void updatePoint(PointMass& point, float deltaTime) {
+		point.x += point.vx * deltaTime;
+		point.y += point.vy * deltaTime;
 	}
 
-	void resolveWallCollision(Ball& ball) {
-		if (ball.x - ball.radius < -1.0f) {
-			ball.x = -1.0f + ball.radius;
-			ball.vx = -ball.vx;
+	void resolveWallCollision(PointMass& point) {
+		if (point.x - pointRadius < -1.0f) {
+			point.x = -1.0f + pointRadius;
+			point.vx = -point.vx;
 		}
-		if (ball.x + ball.radius > 1.0f) {
-			ball.x = 1.0f - ball.radius;
-			ball.vx = -ball.vx;
+		if (point.x + pointRadius > 1.0f) {
+			point.x = 1.0f - pointRadius;
+			point.vx = -point.vx;
 		}
-		if (ball.y - ball.radius < -1.0f) {
-			ball.y = -1.0f + ball.radius;
-			ball.vy = -ball.vy * ball.restitution;
+		if (point.y - pointRadius < -1.0f) {
+			point.y = -1.0f + pointRadius;
+			point.vy = -point.vy * restitution;
 		}
-		if (ball.y + ball.radius > 1.0f) {
-			ball.y = 1.0f - ball.radius;
-			ball.vy = -ball.vy;
+		if (point.y + pointRadius > 1.0f) {
+			point.y = 1.0f - pointRadius;
+			point.vy = -point.vy;
 		}
 	}
 
@@ -169,10 +160,17 @@ int main(void)
     initializeGLADJ();
 
 	GLuint shaderProgram = createShaderProgram(kVertexShaderSource, kFragmentShaderSource);
-	CircleMesh mesh = createCircleMesh(ballRadius, ballSegments);
-	std::vector<Ball> balls = {
-			{-0.5f, 0.3f, 0.6f, 0.4f, ballRadius, 0.75},
+
+
+	std::vector<float> circleVerts = generateCircleVertices(pointRadius, ballSegments);
+	GLuint circleVBO = 0;
+	GLuint circleVAO = createDynamicVao(circleVBO);
+	GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
+
+	std::vector<PointMass> points{
+		{0.0f, 0.6f, 0.0f, 0.0f, 1.0f},
 	};
+	
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
@@ -187,17 +185,26 @@ int main(void)
 
 		glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
-		for (Ball& ball : balls) {
-			applyGravity(ball, deltaTime);
-			updateBall(ball, deltaTime);
-			resolveWallCollision(ball);
+		for (PointMass& point : points) {
+			applyGravity(point, deltaTime);
+			updatePoint(point, deltaTime);
+			resolveWallCollision(point);
 		}
 
 		/* Render here */
 
 		glClear(GL_COLOR_BUFFER_BIT);
-		for (const Ball& ball : balls) {
-			drawBall(shaderProgram, mesh, ball);
+		
+		glUseProgram(shaderProgram);
+		glBindVertexArray(circleVAO);
+		for (const PointMass& point : points) {
+			std::vector<float> translated = circleVerts;
+			for (size_t i = 0; i < translated.size(); i += 2) {
+				translated[i] += point.x;
+				translated[i + 1] += point.y;
+			}
+			uploadDynamic(circleVBO, translated);
+			glDrawArrays(GL_TRIANGLE_FAN, 0, circleVertexCount);
 		}
 
         /* Swap front and back buffers */
@@ -207,8 +214,8 @@ int main(void)
         glfwPollEvents();
     }
 
-	glDeleteVertexArrays(1, &mesh.vao);
-	glDeleteBuffers(1, &mesh.vbo);
+	glDeleteVertexArrays(1, &circleVAO);
+	glDeleteBuffers(1, &circleVBO);
 	glDeleteProgram(shaderProgram);
 
     glfwTerminate();
