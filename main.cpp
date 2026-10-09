@@ -16,10 +16,6 @@ namespace {
 		float radius; // Radius of the ball
 	};
 
-	struct Vector2 {
-		float x, y;
-	};;
-
 	constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
 uniform vec2 uCenter;
@@ -141,12 +137,7 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		}
 	}
 
-	bool checkBallCollision(const Ball& a, const Ball& b) {
-		float dx = b.x - a.x;
-		float dy = b.y - a.y;
-		float distance = sqrt(dx * dx + dy * dy);
-		return distance < (a.radius + b.radius);
-	}
+	
 
 } // namespace
 
@@ -175,9 +166,6 @@ int main(void)
 	CircleMesh mesh = createCircleMesh(ballRadius, ballSegments);
 	std::vector<Ball> balls = {
 			{-0.5f, 0.3f, 0.6f, 0.4f, ballRadius},
-			{0.2f, -0.4f, -0.5f, 0.7f, ballRadius},
-			{-0.3f, -0.2f, 0.3f, -0.6f, ballRadius},
-			{0.4f, 0.2f, -0.5f, 0.3f, ballRadius},
 	};
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
@@ -198,14 +186,6 @@ int main(void)
 			resolveWallCollision(ball);
 		}
 
-		for (size_t i = 0; i < balls.size(); ++i) {
-			for (size_t j = i + 1; j < balls.size(); ++j) {
-				if (checkBallCollision(balls[i], balls[j])) {
-					std::swap(balls[i].vx, balls[j].vx);
-					std::swap(balls[i].vy, balls[j].vy);
-				}
-			}
-		}
 		/* Render here */
 
 		glClear(GL_COLOR_BUFFER_BIT);
