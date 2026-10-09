@@ -13,6 +13,7 @@ namespace {
 
 	constexpr float gravity = -1.8f;
 	constexpr float dt = 1.0f / 120.0f;
+	constexpr int iterations = 5;
 
 
 	struct Point {
@@ -214,8 +215,10 @@ int main(void)
 			updatePoint(point, dt);
 		}
 
-		for (const Stick& stick : sticks) {
-			applyStick(points, stick);
+		for (int i = 0; i < iterations; ++i) {
+			for (const Stick& stick : sticks) {
+				applyStick(points, stick);
+			}
 		}
 
 		/* Render here */
