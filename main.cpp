@@ -221,6 +221,8 @@ int main(void)
 		{1, 2, distance(points[1], points[2])},
 		{2, 3, distance(points[2], points[3])},
 		{3, 0, distance(points[3], points[0])},
+		{0, 2, distance(points[0], points[2])},
+		{1, 3, distance(points[1], points[3])},
 	};
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
