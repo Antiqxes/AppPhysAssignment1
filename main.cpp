@@ -15,6 +15,7 @@ namespace {
 		float x, y; // Position of the ball
 		float vx, vy; // Velocity of the ball
 		float radius; // Radius of the ball
+		float restitution;
 	};
 
 	constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -134,7 +135,7 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		}
 		if (ball.y - ball.radius < -1.0f) {
 			ball.y = -1.0f + ball.radius;
-			ball.vy = -ball.vy;
+			ball.vy = -ball.vy * ball.restitution;
 		}
 		if (ball.y + ball.radius > 1.0f) {
 			ball.y = 1.0f - ball.radius;
@@ -170,7 +171,7 @@ int main(void)
 	GLuint shaderProgram = createShaderProgram(kVertexShaderSource, kFragmentShaderSource);
 	CircleMesh mesh = createCircleMesh(ballRadius, ballSegments);
 	std::vector<Ball> balls = {
-			{-0.5f, 0.3f, 0.6f, 0.4f, ballRadius},
+			{-0.5f, 0.3f, 0.6f, 0.4f, ballRadius, 0.75},
 	};
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
