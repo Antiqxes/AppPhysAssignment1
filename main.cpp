@@ -17,6 +17,7 @@ namespace {
 
 	struct Point {
 		float x, y, px, py;
+		bool pinned = false;
 	};
 
 	struct Vector2 {
@@ -122,6 +123,7 @@ void main() { FragColor = uColor; }
 	}
 
 	void updatePoint(Point& point, float dt) {
+		if (point.pinned) return;
 		float oldX = point.x, oldY = point.y;
 		point.x += point.x - point.px;
 		point.y += point.y - point.py + gravity * dt * dt;
@@ -136,10 +138,12 @@ void main() { FragColor = uColor; }
 		if (dist < 1e-6f) return;
 		float error = dist - stick.restLength;
 		Vector2 dir = { (b.x - a.x) / dist, (b.y - a.y) / dist };
-		a.x += dir.x * error * 0.5f;
-		a.y += dir.y * error * 0.5f;
-		b.x -= dir.x * error * 0.5f;
-		b.y -= dir.y * error * 0.5f;
+		float wA = a.pinned ? 0.0f : (b.pinned ? 1.0f : 0.5f);
+		float wB = b.pinned ? 0.0f : (a.pinned ? 1.0f : 0.5f);
+		a.x += dir.x * error * wA;
+		a.y += dir.y * error * wA;
+		b.x -= dir.x * error * wB;
+		b.y -= dir.y * error * wB;
 	}
 
 } // namespace
@@ -177,13 +181,26 @@ int main(void)
 	GLuint lineVAO = createDynamicVao(lineVBO);
 
 	std::vector<Point> points = { 
-		{-0.1f, 0.8f, -0.1f, 0.8f}, 
-		{0.2f, 0.7f, 0.19f, 0.7f},
+		{-0.35f, 0.8f, -0.35f, 0.8f},
+		{-0.25f, 0.8f, -0.25f, 0.8f},
+		{-0.15f, 0.8f, -0.15f, 0.8f},
+		{-0.05f, 0.8f, -0.05f, 0.8f},
+		{0.05f, 0.8f, 0.05f, 0.8f},
+		{0.15f, 0.8f, 0.15f, 0.8f},
+		{0.25f, 0.8f, 0.25f, 0.8f},
+		{0.35f, 0.8f, 0.35f, 0.8f},
 	};
 
 	std::vector<Stick> sticks = {
-		{0, 1, distance(points[0], points[1])}
+		{0, 1, distance(points[0], points[1])},
+		{1, 2, distance(points[1], points[2])},
+		{2, 3, distance(points[2], points[3])},
+		{3, 4, distance(points[3], points[4])},
+		{4, 5, distance(points[4], points[5])},
+		{5, 6, distance(points[5], points[6])},
+		{6, 7, distance(points[6], points[7])},
 	};
+	points[0].pinned = true;
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
