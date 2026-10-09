@@ -9,15 +9,24 @@ namespace {
 
 	constexpr int ballSegments = 40; // Number of segments to approximate the ball
 	constexpr float pi = 3.14159265358979323846f; // Value of pi
-	constexpr float gravity = -1.8f; // Gravity acceleration
-	constexpr float stiffness = 400.0f; // Stiffness for collision response
 	constexpr float pointRadius = 0.03f; // Radius of the point mass
 	constexpr float restitution = 0.4f; // Coefficient of restitution
+	constexpr float gravity = -1.8f; // Gravity acceleration
+	constexpr float stiffness = 400.0f; // Stiffness for collision response
 
 	struct PointMass {
 		float x, y; // Position of the point mass
 		float vx, vy; // Velocity of the point mass
 		float mass; // Mass of the point mass
+	};
+
+	struct Spring {
+		int a, b;
+		float restLength;
+	};
+
+	struct Vector2 {
+		float x, y;
 	};
 
 	constexpr const char* kVertexShaderSource = R"(#version 330 core
@@ -28,7 +37,8 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
 
 	constexpr const char* kFragmentShaderSource = R"(#version 330 core
 out vec4 FragColor;
-void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
+uniform vec4 uColor;
+void main() { FragColor = uColor; }
 )";
 
 	GLuint compileShader(GLenum type, const char* source) {
@@ -106,6 +116,32 @@ void main() { FragColor = vec4(0.85, 0.85, 0.9, 1.0); }
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
+	float distance(const PointMass& a, const PointMass& b) {
+		float dx = b.x - a.x;
+		float dy = b.y - a.y;
+		return sqrtf(dx * dx + dy * dy);
+	}
+
+	void applySpringForce(std::vector<PointMass>& points, const Spring& spring, float deltaTime) {
+		PointMass& a = points[spring.a];
+		PointMass& b = points[spring.b];
+
+		float dist = distance(a, b);
+		if (dist < 1e-6f) return;
+
+		Vector2 dir = { (b.x - a.x) / dist, (b.y - a.y) / dist };
+		float stretch = dist - spring.restLength;
+		float forceMagnitude = stiffness * stretch;
+
+		float forceX = dir.x * forceMagnitude;
+		float forceY = dir.y * forceMagnitude;
+
+		a.vx += forceX / a.mass * deltaTime;
+		a.vy += forceY / a.mass * deltaTime;
+		b.vx -= forceX / b.mass * deltaTime;
+		b.vy -= forceY / b.mass * deltaTime;
+	}
+
 	void applyGravity(PointMass& point, float deltaTime) {
 		point.vy += gravity * deltaTime;
 	}
@@ -161,16 +197,24 @@ int main(void)
 
 	GLuint shaderProgram = createShaderProgram(kVertexShaderSource, kFragmentShaderSource);
 
+	GLint colorLoc = glGetUniformLocation(shaderProgram, "uColor");
 
 	std::vector<float> circleVerts = generateCircleVertices(pointRadius, ballSegments);
 	GLuint circleVBO = 0;
 	GLuint circleVAO = createDynamicVao(circleVBO);
 	GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
 
+	GLuint lineVBO = 0;
+	GLuint lineVAO = createDynamicVao(lineVBO);
+
 	std::vector<PointMass> points{
-		{0.0f, 0.6f, 0.0f, 0.0f, 1.0f},
+		{-0.2f, 0.6f, 0.0f, 0.0f, 1.0f},
+		{0.2f, 0.6f, 0.0f, 0.0f, 1.0f},
 	};
 	
+	std::vector<Spring> springs = {
+		{0,1,0.25f},
+	};
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
@@ -185,6 +229,10 @@ int main(void)
 
 		glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
+		for (const Spring& spring : springs) {
+			applySpringForce(points, spring, deltaTime);
+		}
+
 		for (PointMass& point : points) {
 			applyGravity(point, deltaTime);
 			updatePoint(point, deltaTime);
@@ -196,6 +244,20 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 		
 		glUseProgram(shaderProgram);
+
+		std::vector<float> lineVerts;
+		for (const Spring& spring : springs) {
+			lineVerts.push_back(points[spring.a].x);
+			lineVerts.push_back(points[spring.a].y);
+			lineVerts.push_back(points[spring.b].x);
+			lineVerts.push_back(points[spring.b].y);
+		}
+		uploadDynamic(lineVBO, lineVerts);
+		glUniform4f(colorLoc, 0.31f, 0.76f, 0.97f, 1.0f);
+		glBindVertexArray(lineVAO);
+		glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVerts.size() / 2));
+
+
 		glBindVertexArray(circleVAO);
 		for (const PointMass& point : points) {
 			std::vector<float> translated = circleVerts;
@@ -216,6 +278,8 @@ int main(void)
 
 	glDeleteVertexArrays(1, &circleVAO);
 	glDeleteBuffers(1, &circleVBO);
+	glDeleteVertexArrays(1, &lineVAO);
+	glDeleteBuffers(1, &lineVBO);
 	glDeleteProgram(shaderProgram);
 
     glfwTerminate();
