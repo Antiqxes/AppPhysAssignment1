@@ -151,6 +151,12 @@ void main() { FragColor = uColor; }
 		b.y -= dir.y * error * wB;
 	}
 
+	void resolveFloorCollision(Point& point) {
+		if (point.y -pointRadius < -1.0f) {
+			point.y = -1.0f + pointRadius;
+		}
+	}
+
 } // namespace
 
 int main(void)
@@ -201,7 +207,7 @@ int main(void)
 		{2, 7, distance(points[2], points[7])}, {7, 8, distance(points[7], points[8])},
 		{2, 9, distance(points[2], points[9])}, {9, 10, distance(points[9], points[10])},
 	};
-	points[0].pinned = true;
+	//points[0].pinned = true;
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
@@ -219,6 +225,10 @@ int main(void)
 			for (const Stick& stick : sticks) {
 				applyStick(points, stick);
 			}
+		}
+
+		for (Point& point : points) {
+			resolveFloorCollision(point);
 		}
 
 		/* Render here */
