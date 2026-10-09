@@ -23,6 +23,11 @@ namespace {
 		float x, y;
 	};
 
+	struct Stick {
+		int a, b;
+		float restLength;
+	};
+
 	constexpr const char* kVertexShaderSource = R"(#version 330 core
 layout (location = 0) in vec2 aPos;
 
@@ -110,12 +115,31 @@ void main() { FragColor = uColor; }
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
+	float distance(const Point& a, const Point& b) {
+		float dx = b.x - a.x;
+		float dy = b.y - a.y;
+		return std::sqrt(dx*dx+dy*dy);
+	}
+
 	void updatePoint(Point& point, float dt) {
 		float oldX = point.x, oldY = point.y;
 		point.x += point.x - point.px;
 		point.y += point.y - point.py + gravity * dt * dt;
 		point.px = oldX;
 		point.py = oldY;
+	}
+
+	void applyStick(std::vector<Point>& points, const Stick& stick) {
+		Point& a = points[stick.a];
+		Point& b = points[stick.b];
+		float dist = distance(a, b);
+		if (dist < 1e-6f) return;
+		float error = dist - stick.restLength;
+		Vector2 dir = { (b.x - a.x) / dist, (b.y - a.y) / dist };
+		a.x += dir.x * error * 0.5f;
+		a.y += dir.y * error * 0.5f;
+		b.x -= dir.x * error * 0.5f;
+		b.y -= dir.y * error * 0.5f;
 	}
 
 } // namespace
@@ -149,8 +173,17 @@ int main(void)
 	GLuint circleVBO = 0;
 	GLuint circleVAO = createDynamicVao(circleVBO);
 	GLsizei circleVertexCount = static_cast<GLsizei>(circleVerts.size() / 2);
+	GLuint lineVBO = 0;
+	GLuint lineVAO = createDynamicVao(lineVBO);
 
-	std::vector<Point> points = { {0.0f, 0.8f, 0.0f, 0.8f} };
+	std::vector<Point> points = { 
+		{-0.1f, 0.8f, -0.1f, 0.8f}, 
+		{0.2f, 0.7f, 0.19f, 0.7f},
+	};
+
+	std::vector<Stick> sticks = {
+		{0, 1, distance(points[0], points[1])}
+	};
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
@@ -164,12 +197,29 @@ int main(void)
 			updatePoint(point, dt);
 		}
 
+		for (const Stick& stick : sticks) {
+			applyStick(points, stick);
+		}
+
 		/* Render here */
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		
 		glUseProgram(shaderProgram);
 
+		std::vector<float> lineVerts;
+		for (const Stick& stick : sticks) {
+			lineVerts.push_back(points[stick.a].x);
+			lineVerts.push_back(points[stick.a].y);
+			lineVerts.push_back(points[stick.b].x);
+			lineVerts.push_back(points[stick.b].y);
+		}
+		uploadDynamic(lineVBO, lineVerts);
+		glUniform4f(colorLoc, 0.31f, 0.76f, 0.97f, 1.0f);
+		glBindVertexArray(lineVAO);
+		glDrawArrays(GL_LINES, 0, static_cast<GLsizei>(lineVerts.size() / 2));
+
+		glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 1.0f);
 		glBindVertexArray(circleVAO);
 		for (const Point& point : points) {
 			std::vector<float> translated = circleVerts;
@@ -178,7 +228,7 @@ int main(void)
 				translated[i + 1] += point.y;
 			}
 			uploadDynamic(circleVBO, translated);
-			glUniform4f(colorLoc, 0.0f, 1.0f, 0.0f, 1.0f);
+			
 			glDrawArrays(GL_TRIANGLE_FAN, 0, circleVertexCount);
 		}
 
@@ -191,6 +241,8 @@ int main(void)
 
 	glDeleteVertexArrays(1, &circleVAO);
 	glDeleteBuffers(1, &circleVBO);
+	glDeleteVertexArrays(1, &lineVAO);
+	glDeleteBuffers(1, &lineVBO);
 	glDeleteProgram(shaderProgram);
 
     glfwTerminate();
