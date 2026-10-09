@@ -13,6 +13,7 @@ namespace {
 	constexpr float restitution = 0.4f; // Coefficient of restitution
 	constexpr float gravity = -1.8f; // Gravity acceleration
 	constexpr float stiffness = 400.0f; // Stiffness for collision response
+	constexpr float damping = 4.0f;
 
 	struct PointMass {
 		float x, y; // Position of the point mass
@@ -131,7 +132,8 @@ void main() { FragColor = uColor; }
 
 		Vector2 dir = { (b.x - a.x) / dist, (b.y - a.y) / dist };
 		float stretch = dist - spring.restLength;
-		float forceMagnitude = stiffness * stretch;
+		float relVelAlongDir = (b.vx - a.x) * dir.x + (b.y - a.y) * dir.y;
+		float forceMagnitude = stiffness * stretch + damping * relVelAlongDir;
 
 		float forceX = dir.x * forceMagnitude;
 		float forceY = dir.y * forceMagnitude;
