@@ -20,8 +20,17 @@ void initializeGLADJ() {
 	}
 }
 
+void getMousePosFloat(GLFWwindow* window, float& x, float& y) {
+    double rawX, rawY;
+    glfwGetCursorPos(window, &rawX, &rawY);
+
+    x = static_cast<float>(rawX);
+    y = static_cast<float>(rawY);
+}
+
 void glfwKeyCallbackJ(GLFWwindow* window, int key, int scancode, int action, int mods) {
     // GLFW automatically populates 'key' and 'action' based on what the user pressed
+
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
     {
         glfwSetWindowShouldClose(window, true);
@@ -33,3 +42,4 @@ void glfwKeyCallbackJ(GLFWwindow* window, int key, int scancode, int action, int
         // Move player forward, etc.
     }
 }
+

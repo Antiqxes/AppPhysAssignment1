@@ -157,6 +157,21 @@ void main() { FragColor = uColor; }
 		}
 	}
 
+	Point* nearestPoint(std::vector<Point>& points, float x, float y) {
+		Point* nearest = nullptr;
+		float bestDist2 = 0.0f;
+		for (Point& point : points) {
+			float dx = point.x - x;
+			float dy = point.y - y;
+			float dist2 = dx * dx + dy * dy;
+			if (!nearest || dist2 < bestDist2) {
+				nearest = &point;
+				bestDist2 = dist2;
+			}
+		}
+		return nearest;
+	}
+
 } // namespace
 
 int main(void)
@@ -211,14 +226,35 @@ int main(void)
 
 	glClearColor(0.0f, 0.2f, 0.0f, 1.0f);
 
+	
+
+	Point* dragged = nullptr;
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+		/* Poll for and process events */
+		glfwPollEvents();
 
 		glfwSetKeyCallback(window, glfwKeyCallbackJ); // Set the key callback for the window
 
 		for (Point& point : points){
 			updatePoint(point, dt);
+		}
+
+		double mx, my; // Variables to hold mouse position
+
+		glfwGetCursorPos(window, &mx, &my);
+		int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+		float xm = (static_cast<float>(mx) / 600.0f) * 2.0f - 1.0f; // Convert to OpenGL coordinates
+		float ym = 1.0f - static_cast<float>(my / 600.0f) * 2.0f;
+
+		bool down = state;
+		if (down && !dragged) dragged = nearestPoint(points, xm, ym);
+		if (!down) dragged = nullptr;
+		if (dragged) {
+			dragged->x = xm;  dragged->y = ym;
+			dragged->px = xm; dragged->py = ym;
 		}
 
 		for (int i = 0; i < iterations; ++i) {
@@ -265,8 +301,7 @@ int main(void)
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
-        /* Poll for and process events */
-        glfwPollEvents();
+        
     }
 
 	glDeleteVertexArrays(1, &circleVAO);
